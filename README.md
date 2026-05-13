@@ -2,6 +2,29 @@
 
 Bot de automação web usando Python + Playwright. Navega em páginas, captura screenshots e extrai dados.
 
+## Fluxo de execução
+
+```mermaid
+flowchart TD
+    A([Início]) --> B[Carregar .env]
+    B --> C[Iniciar Chromium]
+    C --> D[Abrir nova página]
+    D --> E[Navegar até TARGET_URL]
+    E --> F{Página carregou?}
+    F -- Não --> G[Screenshot de erro]
+    G --> H([Encerrar com erro])
+    F -- Sim --> I[Screenshot da página]
+    I --> J[Extrair título]
+    J --> K[Extrair links]
+    K --> L[Salvar log]
+    L --> M[Fechar navegador]
+    M --> N([Retornar resultado])
+
+    style A fill:#6366f1,color:#fff
+    style N fill:#22c55e,color:#fff
+    style H fill:#ef4444,color:#fff
+```
+
 ## Tecnologias
 
 - Python 3.11+
