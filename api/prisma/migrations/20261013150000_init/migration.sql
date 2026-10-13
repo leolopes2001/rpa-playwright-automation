@@ -1,0 +1,17 @@
+CREATE TYPE "ExecutionStatus" AS ENUM ('QUEUED', 'PROCESSING', 'SUCCESS', 'FAILED', 'CANCELLED');
+CREATE TYPE "OutboxStatus" AS ENUM ('PENDING', 'PUBLISHED', 'FAILED');
+CREATE TABLE "Execution" ("id" TEXT NOT NULL,"idempotencyKey" TEXT NOT NULL,"url" TEXT NOT NULL,"status" "ExecutionStatus" NOT NULL DEFAULT 'QUEUED',"progress" INTEGER NOT NULL DEFAULT 0,"attemptCount" INTEGER NOT NULL DEFAULT 0,"workerId" TEXT,"result" JSONB,"error" TEXT,"createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,"startedAt" TIMESTAMP(3),"finishedAt" TIMESTAMP(3),"durationMs" INTEGER,CONSTRAINT "Execution_pkey" PRIMARY KEY ("id"));
+CREATE TABLE "ExecutionEvent" ("id" TEXT NOT NULL,"executionId" TEXT NOT NULL,"type" TEXT NOT NULL,"message" TEXT NOT NULL,"status" "ExecutionStatus","progress" INTEGER,"metadata" JSONB,"createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,CONSTRAINT "ExecutionEvent_pkey" PRIMARY KEY ("id"));
+CREATE TABLE "ExecutionAttempt" ("id" TEXT NOT NULL,"executionId" TEXT NOT NULL,"number" INTEGER NOT NULL,"status" "ExecutionStatus" NOT NULL,"workerId" TEXT,"error" TEXT,"startedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,"finishedAt" TIMESTAMP(3),CONSTRAINT "ExecutionAttempt_pkey" PRIMARY KEY ("id"));
+CREATE TABLE "ExecutionArtifact" ("id" TEXT NOT NULL,"executionId" TEXT NOT NULL,"name" TEXT NOT NULL,"key" TEXT NOT NULL,"mimeType" TEXT NOT NULL,"size" INTEGER NOT NULL,"createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,CONSTRAINT "ExecutionArtifact_pkey" PRIMARY KEY ("id"));
+CREATE TABLE "OutboxMessage" ("id" TEXT NOT NULL,"aggregateId" TEXT NOT NULL,"routingKey" TEXT NOT NULL,"payload" JSONB NOT NULL,"status" "OutboxStatus" NOT NULL DEFAULT 'PENDING',"attempts" INTEGER NOT NULL DEFAULT 0,"createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,"publishedAt" TIMESTAMP(3),CONSTRAINT "OutboxMessage_pkey" PRIMARY KEY ("id"));
+CREATE UNIQUE INDEX "Execution_idempotencyKey_key" ON "Execution"("idempotencyKey");
+CREATE INDEX "Execution_status_createdAt_idx" ON "Execution"("status", "createdAt" DESC);
+CREATE INDEX "Execution_createdAt_idx" ON "Execution"("createdAt" DESC);
+CREATE INDEX "ExecutionEvent_executionId_createdAt_idx" ON "ExecutionEvent"("executionId", "createdAt");
+CREATE UNIQUE INDEX "ExecutionAttempt_executionId_number_key" ON "ExecutionAttempt"("executionId", "number");
+CREATE UNIQUE INDEX "ExecutionArtifact_executionId_key_key" ON "ExecutionArtifact"("executionId", "key");
+CREATE INDEX "OutboxMessage_status_createdAt_idx" ON "OutboxMessage"("status", "createdAt");
+ALTER TABLE "ExecutionEvent" ADD CONSTRAINT "ExecutionEvent_executionId_fkey" FOREIGN KEY ("executionId") REFERENCES "Execution"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "ExecutionAttempt" ADD CONSTRAINT "ExecutionAttempt_executionId_fkey" FOREIGN KEY ("executionId") REFERENCES "Execution"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "ExecutionArtifact" ADD CONSTRAINT "ExecutionArtifact_executionId_fkey" FOREIGN KEY ("executionId") REFERENCES "Execution"("id") ON DELETE CASCADE ON UPDATE CASCADE;

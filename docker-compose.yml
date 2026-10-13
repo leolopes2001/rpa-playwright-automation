@@ -1,0 +1,104 @@
+name: rpa-platform
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-rpa}
+      POSTGRES_USER: ${POSTGRES_USER:-rpa}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-rpa_local}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  rabbitmq:
+    image: rabbitmq:4-management-alpine
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER:-rpa}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS:-rpa_local}
+    ports:
+      - "15672:15672"
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    restart: unless-stopped
+
+  migrate:
+    build:
+      context: ./api
+      target: build
+    command: ["npx", "prisma", "migrate", "deploy"]
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgresql://rpa:rpa_local@postgres:5432/rpa?schema=public}
+    depends_on:
+      postgres: { condition: service_healthy }
+    restart: "no"
+
+  api:
+    build: ./api
+    environment:
+      PORT: 3001
+      DATABASE_URL: ${DATABASE_URL:-postgresql://rpa:rpa_local@postgres:5432/rpa?schema=public}
+      RABBITMQ_URL: ${RABBITMQ_URL:-amqp://rpa:rpa_local@rabbitmq:5672/}
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3000}
+      ARTIFACTS_DIR: /artifacts
+    ports:
+      - "${API_PORT:-3001}:3001"
+    volumes:
+      - artifacts:/artifacts:ro
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+      rabbitmq: { condition: service_healthy }
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:3001/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  rpa-worker:
+    build: ./rpa
+    environment:
+      RABBITMQ_URL: ${RABBITMQ_URL:-amqp://rpa:rpa_local@rabbitmq:5672/}
+      HEADLESS: ${HEADLESS:-true}
+      TIMEOUT_MS: ${TIMEOUT_MS:-30000}
+      ARTIFACTS_DIR: /artifacts
+      OUTPUT_DIR: /app/downloads
+      WORKER_ID: ${WORKER_ID:-rpa-worker-1}
+      WORKER_CONCURRENCY: ${WORKER_CONCURRENCY:-2}
+      MAX_ATTEMPTS: ${MAX_ATTEMPTS:-3}
+      JOB_TIMEOUT_SECONDS: ${JOB_TIMEOUT_SECONDS:-120}
+    volumes:
+      - artifacts:/artifacts
+    depends_on:
+      rabbitmq: { condition: service_healthy }
+    shm_size: 1gb
+    init: true
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:3001}
+    environment:
+      PORT: 3000
+      HOSTNAME: 0.0.0.0
+    ports:
+      - "${FRONTEND_PORT:-3000}:3000"
+    depends_on:
+      api: { condition: service_healthy }
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  rabbitmq_data:
+  artifacts:

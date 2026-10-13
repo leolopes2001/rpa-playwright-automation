@@ -1,9 +1,81 @@
+# Environment and local secrets
 .env
-__pycache__/
-*.pyc
-*.pyo
-.venv/
-venv/
-screenshots/
-downloads/
-*.log
+.env.*
+!.env.example
+!.env.*.example
+
+# Node.js dependencies and package-manager caches
+**/node_modules/
+**/.npm/
+**/.pnpm-store/
+**/.yarn/cache/
+**/.yarn/unplugged/
+**/.pnp.*
+
+# Next.js, NestJS and TypeScript output
+**/.next/
+**/out/
+**/build/
+**/dist/
+**/.turbo/
+**/*.tsbuildinfo
+**/next-env.d.ts
+
+# Test and coverage output
+**/coverage/
+**/.nyc_output/
+**/test-results/
+**/playwright-report/
+**/blob-report/
+
+# Python environments, bytecode and tool caches
+**/__pycache__/
+**/*.py[cod]
+**/*$py.class
+**/.venv/
+**/venv/
+**/env/
+**/.pytest_cache/
+**/.mypy_cache/
+**/.ruff_cache/
+**/.tox/
+**/.nox/
+**/.coverage
+**/.coverage.*
+**/htmlcov/
+**/*.egg-info/
+
+# Runtime data and generated artifacts
+**/artifacts/
+**/screenshots/
+**/downloads/
+**/*.log
+**/*.pid
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
+
+# Docker local overrides
+docker-compose.override.yml
+compose.override.yml
+
+# Editor and operating-system files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Temporary files
+*.tmp
+*.temp
+.cache/
+
+# Keep repository contracts and generated documentation assets
+!.env.example
+!**/package-lock.json
+!**/prisma/migrations/**
+!docs/images/**
